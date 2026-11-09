@@ -79,7 +79,7 @@ N_AXIS has a default value of 3, edit grbl\config.h to increase.
 
 #define MODBUS_ENABLE           1 // Set to 1 for auto direction, 2 for direction signal on auxiliary output pin.
 #define MODBUS_RTU_STREAM       1 // which stream instance to use. 0,1,2. Use UART1 instance (UART port number defined below)
-#define UART1_PORT              4 // Which IMXRT LPUART port to use LPUART4 == RX2/TX2 on the Teensy Pinout Doc
+#define SERIAL1_PORT            4 // Which IMXRT LPUART port to use LPUART4 == RX2/TX2 on the Teensy Pinout Doc
 
 
 #define WEBUI_ENABLE            3 // Enable ESP3D-WEBUI plugin along with networking and SD card plugins.
