@@ -224,6 +224,32 @@ PROGMEM static const uart_hardware_t uart1_hardware =
     }
 };
 
+#elif SERIAL1_PORT == 4
+
+#define RX1_PIN 7
+#define TX1_PIN 8
+
+static const uart_hardware_t uart1_hardware =
+{
+    .port = &IMXRT_LPUART4,
+    .ccm_register = &CCM_CCGR1,
+    .ccm_value = CCM_CCGR1_LPUART4(CCM_CCGR_ON),
+    .irq = IRQ_LPUART4,
+    .irq_handler = uart1_interrupt_handler,
+    .rx_pin = {
+        .pin = RX1_PIN,
+        .mux_val = 2,
+        .select_reg = &IOMUXC_LPUART4_RX_SELECT_INPUT,
+        .select_val = 2
+    },
+    .tx_pin = {
+        .pin = TX1_PIN,
+        .mux_val = 2,
+        .select_reg = &IOMUXC_LPUART4_TX_SELECT_INPUT,
+        .select_val = 2
+    }
+};
+
 #elif SERIAL1_PORT == 5
 
 #define RX1_PIN 34

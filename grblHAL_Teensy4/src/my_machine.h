@@ -30,20 +30,25 @@
 //#define BOARD_T41U5XBB
 //#define BOARD_T41U5XBB_SS // For a modified T41U5XBB board, allows spindle sync to be enabled.
 //#define BOARD_T41BB5X_PRO
-//#define BOARD_MY_MACHINE // Add my_machine_map.h before enabling this!
+//#define BOARD_CNC_BOOSTERPACK
+//#define BOARD_GRBLHAL2000
+#define BOARD_MY_MACHINE // Add my_machine_map.h before enabling this!
+#define BAUD_RATE 115200
+// Configuration
+// Uncomment to enable, for some a value > 1 may be assigned, if so the default value is shown.
 
 /*
-              Plugin: | ETHERNET¹ | SDCARD¹ | KEYPAD | EEPROM | N_AXIS |
+              Plugin: | ETHERNETï¿½ | SDCARDï¿½ | KEYPAD | EEPROM | N_AXIS |
 ----------------------|-----------|---------|--------|--------|--------|
-BOARD_T40X101         | no        | no      | yes    | yes³   | max 4  |
-BOARD_T41U5XBB        | yes       | yes     | yes    | yes³   | max 5  |
+BOARD_T40X101         | no        | no      | yes    | yesï¿½   | max 4  |
+BOARD_T41U5XBB        | yes       | yes     | yes    | yesï¿½   | max 5  |
 BOARD_T41BB5X_PRO     | yes       | yes     | yes    | yes    | max 5  |
-BOARD_CNC_BOOSTERPACK | yes²      | yes     | yes    | yes    | max 3  |
+BOARD_CNC_BOOSTERPACK | yesï¿½      | yes     | yes    | yes    | max 3  |
 BOARD_GRBLHAL2000     | yes       | yes     | yes    | yes    | max 5  |
 
-¹ Teensy 4.1 only
-² External magjack.
-³ EEPROM is optional and must be added to the board.
+ï¿½ Teensy 4.1 only
+ï¿½ External magjack.
+ï¿½ EEPROM is optional and must be added to the board.
 
 N_AXIS has a default value of 3, edit grbl\config.h to increase.
 
@@ -64,22 +69,28 @@ N_AXIS has a default value of 3, edit grbl\config.h to increase.
 // If none are specified the default PWM spindle is instantiated.
 // Spindle definitions can be found in grbl/spindle_control.h.
 // More here https://github.com/grblHAL/Plugins_spindle
-//#define SPINDLE0_ENABLE         SPINDLE_HUANYANG1
+#define VFD_SPINDLE
+#define SPINDLE0_ENABLE         SPINDLE_HUANYANG1
 //#define SPINDLE1_ENABLE         SPINDLE_PWM0
 //#define SPINDLE2_ENABLE         SPINDLE_NONE
 //#define SPINDLE2_ENABLE         SPINDLE_NONE
 //#define SPINDLE_OFFSET          1 // Uncomment to enable settings for laser spindle XY-offset.
 // **********************
-//#define MODBUS_ENABLE           1 // Set to 1 for auto direction, 2 for direction signal on auxiliary output pin.
-//#define WEBUI_ENABLE            3 // Enable ESP3D-WEBUI plugin along with networking and SD card plugins.
-//#define ETHERNET_ENABLE         1 // Ethernet streaming. Enables networking plugin.
-//#define SDCARD_ENABLE           1 // Run gcode programs from SD card. Set to 2 to enable YModem upload.
+
+#define MODBUS_ENABLE           1 // Set to 1 for auto direction, 2 for direction signal on auxiliary output pin.
+#define MODBUS_RTU_STREAM       1 // which stream instance to use. 0,1,2. Use UART1 instance (UART port number defined below)
+#define UART1_PORT              4 // Which IMXRT LPUART port to use LPUART4 == RX2/TX2 on the Teensy Pinout Doc
+
+
+#define WEBUI_ENABLE            3 // Enable ESP3D-WEBUI plugin along with networking and SD card plugins.
+#define ETHERNET_ENABLE         1 // Ethernet streaming. Enables networking plugin.
+#define SDCARD_ENABLE           1 // Run gcode programs from SD card. Set to 2 to enable YModem upload.
 //#define LITTLEFS_ENABLE         1 // Enable flash based storage, automatically enabled if WebUI is enabled. Set to 2 to mount as root.
 //#define ENCODER_ENABLE          1 // Enable encoder plugin and quadrature encoder interface. Set to to 2 if select input is not required or available.
 //#define MPG_ENABLE              1 // Enable MPG interface. Requires a serial stream and means to switch between normal and MPG mode.
                                     // 1: Mode switching is by handshake pin.
                                     // 2: Mode switching is by the CMD_MPG_MODE_TOGGLE (0x8B) command character.
-//#define KEYPAD_ENABLE           1 // 1: uses a I2C keypad for input.
+// #define KEYPAD_ENABLE           2 // 1: uses a I2C keypad for input.
                                     // 2: uses a serial stream for input. If MPG_ENABLE is set > 0 the serial stream is shared with the MPG.
 //#define DISPLAY_ENABLE          9 // Set to 9 for I2C display protocol, 17 for I2C LED protocol.
 //#define MACROS_ENABLE           1 // Macros plugin. For macros that can be triggered by keypad plugin or auxiliary inputs.
@@ -131,7 +142,8 @@ N_AXIS has a default value of 3, edit grbl\config.h to increase.
 //#define PROBE_ENABLE            0 // Default enabled, remove comment to disable probe input.
 //#define PROBE2_ENABLE           1 // Enable second regular probe input, depending on the board the input assigned may be predefined.
 //#define TOOLSETTER_ENABLE       1 // Enable toolsetter input, depending on the board the input assigned may be predefined.
-//#define SAFETY_DOOR_ENABLE      1
+// #define PROBE_ENABLE            0 // Default enabled, remove comment to disable probe input.
+#define SAFETY_DOOR_ENABLE      1
 //#define MOTOR_FAULT_ENABLE      1
 //#define MOTOR_WARNING_ENABLE    1
 //#define PROBE_DISCONNECT_ENABLE 1
@@ -144,41 +156,42 @@ N_AXIS has a default value of 3, edit grbl\config.h to increase.
 // of axes can be enabled here.
 //#define X_GANGED             1
 //#define X_AUTO_SQUARE        1
-//#define Y_GANGED             1
-//#define Y_AUTO_SQUARE        1
+#define Y_GANGED             1
+#define Y_AUTO_SQUARE        1
 //#define Z_GANGED             1
 //#define Z_AUTO_SQUARE        1
 // For ganged axes the limit switch input (if available) can be configured to act as a max travel limit switch.
 // NOTE: If board map already has max limit inputs defined this configuration will be ignored.
 //#define X_GANGED_LIM_MAX     1
-//#define Y_GANGED_LIM_MAX     1
+#define Y_GANGED_LIM_MAX     1
 //#define Z_GANGED_LIM_MAX     1
 //
 
 #if ETHERNET_ENABLE || WEBUI_ENABLE
-//#define TELNET_ENABLE        1 // Telnet daemon - requires Ethernet streaming enabled.
-//#define WEBSOCKET_ENABLE     1 // Websocket daemon - requires Ethernet streaming enabled.
-//#define MDNS_ENABLE          1 // mDNS daemon.
-//#define SSDP_ENABLE          1 // SSDP daemon - requires HTTP enabled.
-//#define MQTT_ENABLE          1 // MQTT client API, only enable if needed by plugin code.
+#define TELNET_ENABLE        1 // Telnet daemon - requires Ethernet streaming enabled.
+#define WEBSOCKET_ENABLE     1 // Websocket daemon - requires Ethernet streaming enabled.
+#define MDNS_ENABLE          1 // mDNS daemon.
+#define SSDP_ENABLE          1 // SSDP daemon - requires HTTP enabled.
+#define MQTT_ENABLE          1 // MQTT client API, only enable if needed by plugin code.
 #if SDCARD_ENABLE || WEBUI_ENABLE
-//#define FTP_ENABLE           1 // Ftp daemon - requires SD card enabled
-//#define HTTP_ENABLE          1 // http daemon - requires SD card enabled.
-//#define WEBDAV_ENABLE        1 // webdav protocol - requires http daemon and SD card enabled.
+#define FTP_ENABLE           1 // Ftp daemon - requires SD card enabled
+#define HTTP_ENABLE          1 // http daemon - requires SD card enabled.
+#define WEBDAV_ENABLE        1 // webdav protocol - requires http daemon and SD card enabled.
 #endif
 // The following symbols have the default values as shown, uncomment and change as needed.
 //#define NETWORK_HOSTNAME        "grblHAL"
-//#define NETWORK_IPMODE          1 // 0 = static, 1 = DHCP, 2 = AutoIP
+#define NETWORK_IPMODE          1 // 0 = static, 1 = DHCP, 2 = AutoIP
 //#define NETWORK_IP              "192.168.5.1"
 //#define NETWORK_GATEWAY         "192.168.5.1"
 //#define NETWORK_MASK            "255.255.255.0"
-//#define NETWORK_FTP_PORT        21
-//#define NETWORK_TELNET_PORT     23
-//#define NETWORK_HTTP_PORT       80
+#define NETWORK_FTP_PORT        21
+#define NETWORK_TELNET_PORT     23
+#define NETWORK_HTTP_PORT       80
 #if HTTP_ENABLE
-//#define NETWORK_WEBSOCKET_PORT  81
+#define NETWORK_WEBSOCKET_PORT  81
 #else
 //#define NETWORK_WEBSOCKET_PORT  80
 #endif
 #endif
 
+#define DEFAULT_ENABLE_SIGNALS_INVERT_MASK 0
