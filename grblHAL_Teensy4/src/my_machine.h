@@ -195,3 +195,6 @@ N_AXIS has a default value of 3, edit grbl\config.h to increase.
 #endif
 
 #define DEFAULT_ENABLE_SIGNALS_INVERT_MASK 0
+
+// Get around an issue with __get_PRIMASK and __set_PRIMASK not being defined
+#define WEB_BUILD 1
