@@ -33,7 +33,6 @@
 //#define BOARD_CNC_BOOSTERPACK
 //#define BOARD_GRBLHAL2000
 #define BOARD_MY_MACHINE // Add my_machine_map.h before enabling this!
-#define BAUD_RATE 115200
 // Configuration
 // Uncomment to enable, for some a value > 1 may be assigned, if so the default value is shown.
 
@@ -61,7 +60,7 @@ N_AXIS has a default value of 3, edit grbl\config.h to increase.
 #define USB_SERIAL_CDC          2 // 1 for Arduino class library and 2 for PJRC C library. Comment out or set to 0 to use UART communication.
 #endif
 //#define USB_SERIAL_WAIT         1 // Wait for USB connection before starting grblHAL.
-//#define BAUD_RATE 		 115200 // UART baud rate
+#define BAUD_RATE 		 115200 // UART baud rate
 //#define BLUETOOTH_ENABLE        2 // Set to 2 for HC-05 module. Requires and claims one auxiliary input pin.
 // Spindle selection:
 // Up to four specific spindle drivers can be instantiated at a time
@@ -195,6 +194,3 @@ N_AXIS has a default value of 3, edit grbl\config.h to increase.
 #endif
 
 #define DEFAULT_ENABLE_SIGNALS_INVERT_MASK 0
-
-// Get around an issue with __get_PRIMASK and __set_PRIMASK not being defined
-#define WEB_BUILD 1
