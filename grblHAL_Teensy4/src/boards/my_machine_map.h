@@ -34,10 +34,6 @@
 #define M4_LIMIT_PIN        (24u)
 #endif
 
-#define RESET_PIN           (3u)
-#define FEED_HOLD_PIN       (6u)
-#define CYCLE_START_PIN     (5u)
-
 // Define auxiliary out pins
 #define AUXOUTPUT0_PIN      (20u) // AUX0
 #define AUXOUTPUT1_PIN      (13u) // AUX1
@@ -56,7 +52,9 @@
 #define AUXINPUT4_PIN       (36u) // ALARM5
 #define AUXINPUT5_PIN       (4u)  // Safety door
 #define AUXINPUT6_PIN       (2u)  // Probe
-// #define AUXINPUT7_PIN       (2u)  // Probe
+#define AUXINPUT7_PIN       (3u)  // Reset/Estop
+#define AUXINPUT8_PIN       (6u)  // Feed hold
+#define AUXINPUT9_PIN       (5u)  // Cycle start
 
 // Define flood and mist coolant enable output pins.
 #if COOLANT_ENABLE & COOLANT_FLOOD
@@ -72,6 +70,17 @@
 
 #if SAFETY_DOOR_ENABLE
 #define SAFETY_DOOR_PIN     AUXINPUT5_PIN
+#endif
+
+// Define user-control controls (cycle start, reset, feed hold) input pins.
+#if CONTROL_ENABLE & CONTROL_HALT
+#define RESET_PIN           AUXINPUT7_PIN
+#endif
+#if CONTROL_ENABLE & CONTROL_FEED_HOLD
+#define FEED_HOLD_PIN       AUXINPUT8_PIN
+#endif
+#if CONTROL_ENABLE & CONTROL_CYCLE_START
+#define CYCLE_START_PIN     AUXINPUT9_PIN
 #endif
 
 #ifdef NETWORK_HOSTNAME
