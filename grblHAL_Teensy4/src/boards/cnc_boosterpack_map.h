@@ -3,7 +3,7 @@
 
   Part of grblHAL
 
-  Copyright (c) 2020-2024 Terje Io
+  Copyright (c) 2020-2026 Terje Io
 
   grblHAL is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -41,7 +41,7 @@
 #define I2C_SDA0            (18u) // Not referenced, for info only
 #endif
 
-#define UART_PORT           8
+#define SERIAL_PORT         8
 #define UART_RX5            (21u) // Not referenced, for info only
 #define UART_TX5            (20u) // Not referenced, for info only
 
@@ -90,22 +90,27 @@
 #define COOLANT_MIST_PIN        AUXOUTPUT4_PIN
 #endif
 
-// Define user-control CONTROLs (cycle start, reset, feed hold) input pins.
-#define RESET_PIN           (11u)
-#define FEED_HOLD_PIN       (7u)
-#define CYCLE_START_PIN     (6u)
-
-#if !QEI_ENABLE
 #define AUXINPUT0_PIN       (3u)
-#endif
 #define AUXINPUT1_PIN       (29u)
 #define AUXINPUT2_PIN       (27u)
-#if !QEI_ENABLE
 #define AUXINPUT3_PIN       (2u)
-#endif
 #define AUXINPUT4_PIN       (28u) // I2C strobe
 #define AUXINPUT5_PIN       (9u)  // Safety door
 #define AUXINPUT6_PIN       (15u) // Probe
+#define AUXINPUT7_PIN       (11u) // Reset/EStop
+#define AUXINPUT8_PIN       (7u)  // Feed hold
+#define AUXINPUT9_PIN       (6u)  // Cycle start
+
+// Define user-control controls (cycle start, reset, feed hold) input pins.
+#if CONTROL_ENABLE & CONTROL_HALT
+#define RESET_PIN           AUXINPUT7_PIN
+#endif
+#if CONTROL_ENABLE & CONTROL_FEED_HOLD
+#define FEED_HOLD_PIN       AUXINPUT8_PIN
+#endif
+#if CONTROL_ENABLE & CONTROL_CYCLE_START
+#define CYCLE_START_PIN     AUXINPUT9_PIN
+#endif
 
 #if PROBE_ENABLE
 #define PROBE_PIN           AUXINPUT6_PIN
@@ -119,11 +124,12 @@
 #define I2C_STROBE_PIN      AUXINPUT4_PIN
 #endif
 
-#if QEI_ENABLE
-    #define QEI_A_PIN       (3u)
-    #define QEI_B_PIN       (2u)
-//    #define QEI_INDEX_PIN  GPIO2_PIN
-    #define QEI_SELECT_PIN AUXINPUT1_PIN
+#if ENCODER_ENABLE
+#define QEI_A_PIN           AUXINPUT0_PIN
+#define QEI_B_PIN           AUXINPUT3_PIN
+#if (ENCODER_ENABLE & 1) && defined(AUXINPUT1_PIN)
+#define QEI_SELECT_PIN      AUXINPUT1_PIN
+#endif
 #endif
 
 /* EOF */

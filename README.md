@@ -1,3 +1,7 @@
+#  Info
+
+Fork of [grblHAL iMXRT1062 driver](https://github.com/grblHAL/iMXRT1062) with changes to support a custom controller PCB
+
 ## iMXRT1062 Driver
 
 A grblHAL driver for the NXP iMXRT1062 processor on a [Teensy 4.x board](https://www.pjrc.com/store/teensy40.html).

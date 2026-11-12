@@ -7,7 +7,7 @@
 
   Board by Phil Barrett: https://github.com/phil-barrett/grblHAL-teensy-4.x
 
-  Copyright (c) 2020-2024 Terje Io
+  Copyright (c) 2020-2026 Terje Io
 
   grblHAL is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -102,21 +102,14 @@
 #define COOLANT_MIST_PIN        AUXOUTPUT7_PIN
 #endif
 
-// Define user-control CONTROLs (cycle start, reset, feed hold, door) input pins.
-#define RESET_PIN           (35u)
-#define FEED_HOLD_PIN       (16u)
-#define CYCLE_START_PIN     (17u)
-
 // Define auxiliary input pins
 #define AUXINPUT0_PIN       (36u) // ST0
-#if !QEI_ENABLE
 #define AUXINPUT1_PIN       (30u) // ST1
-#endif
-#if !SPINDLE_SYNC_ENABLE && !QEI_ENABLE
-#define AUXINPUT2_PIN       (34u) // ST2
-#endif
 #if !SPINDLE_SYNC_ENABLE
+#define AUXINPUT2_PIN       (34u) // ST2
+#if !THCAD2_ENABLE
 #define AUXINPUT3_PIN       (14u) // ST3
+#endif
 #endif
 #define AUXINPUT4_PIN       (41u) // I2C strobe
 #if !defined(M4_LIMIT_PIN)
@@ -124,6 +117,20 @@
 #endif
 #define AUXINPUT6_PIN       (29u) // Safety door
 #define AUXINPUT7_PIN       (15u) // Probe
+#define AUXINPUT8_PIN       (35u) // Reset/EStop
+#define AUXINPUT9_PIN       (16u) // Feed hold
+#define AUXINPUT10_PIN      (17u) // Cycle start
+
+// Define user-control controls (cycle start, reset, feed hold) input pins.
+#if CONTROL_ENABLE & CONTROL_HALT
+#define RESET_PIN           AUXINPUT8_PIN
+#endif
+#if CONTROL_ENABLE & CONTROL_FEED_HOLD
+#define FEED_HOLD_PIN       AUXINPUT9_PIN
+#endif
+#if CONTROL_ENABLE & CONTROL_CYCLE_START
+#define CYCLE_START_PIN     AUXINPUT10_PIN
+#endif
 
 #if PROBE_ENABLE
 #define PROBE_PIN           AUXINPUT7_PIN
@@ -157,13 +164,29 @@
 #endif
 #endif
 
+#if ENCODER_ENABLE && defined(AUXINPUT2_PIN)
+#define QEI_A_PIN           AUXINPUT1_PIN
+#define QEI_B_PIN           AUXINPUT2_PIN
+#if (ENCODER_ENABLE & 1)
+#define QEI_SELECT_PIN      AUXINPUT3_PIN
+#endif
+#endif
+
 #if SPINDLE_SYNC_ENABLE
 #define SPINDLE_INDEX_PIN   (34u) // ST2
 #define SPINDLE_PULSE_PIN   (14u) // ST3
+#elif THCAD2_ENABLE
+#define THCAD2_PIN          (14u) // ST3
 #endif
 
 #if I2C_ENABLE
 #define I2C_PORT            4
 #define I2C_SCL4            (24u) // Not referenced, for info only
 #define I2C_SDA4            (25u) // Not referenced, for info only
+#elif RGB_LED_ENABLE
+#define NEOPIXEL_UART_PIN	(24u)
+#else
+#define SERIAL1_PORT		1
+#define UART1_RX    		(25u) // Not used, for info only
+#define UART1_TX    		(24u) // Not used, for info only
 #endif

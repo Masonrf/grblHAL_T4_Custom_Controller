@@ -42,6 +42,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "cmsis_gcc.h"
+
 #include "driver.h"
 #include "uart.h"
 
@@ -68,16 +70,16 @@ typedef struct {
 static uint16_t tx_fifo_size;
 DMAMEM static stream_tx_buffer_t txbuffer;
 DMAMEM static stream_rx_buffer_t rxbuffer;
-static enqueue_realtime_command_ptr enqueue_realtime_command = protocol_enqueue_realtime_command;
+static enqueue_realtime_command_ptr enqueue_realtime_command;
 
 static const io_stream_t *serialInit (uint32_t baud_rate);
 static void uart_interrupt_handler (void);
 
-#ifndef UART_PORT
+#if SERIAL_PORT == 6
 
-#define RX_PIN    0
-#define TX_PIN    1
-#define UART_PORT 6
+#define RX_PIN      0
+#define TX_PIN      1
+#define SERIAL_PORT 6
 
 static const uart_hardware_t uart_hardware =
 {
@@ -100,7 +102,7 @@ static const uart_hardware_t uart_hardware =
     }
 };
 
-#elif UART_PORT == 5
+#elif SERIAL_PORT == 5
 
 #define RX_PIN 34
 #define TX_PIN 35
@@ -126,7 +128,33 @@ static const uart_hardware_t uart_hardware =
     }
 };
 
-#elif UART_PORT == 8
+#elif SERIAL_PORT == 7
+
+#define RX_PIN 28
+#define TX_PIN 29
+
+PROGMEM static const uart_hardware_t uart_hardware =
+{
+    .port = &IMXRT_LPUART7,
+    .ccm_register = &CCM_CCGR5,
+    .ccm_value = CCM_CCGR5_LPUART7(CCM_CCGR_ON),
+    .irq = IRQ_LPUART7,
+    .irq_handler = uart_interrupt_handler,
+    .rx_pin = {
+        .pin = RX_PIN,
+        .mux_val = 2,
+        .select_reg = &IOMUXC_LPUART7_RX_SELECT_INPUT,
+        .select_val = 1
+    },
+    .tx_pin = {
+        .pin = TX_PIN,
+        .mux_val = 2,
+        .select_reg = NULL,
+        .select_val = 0
+    }
+};
+
+#elif SERIAL_PORT == 8
 
 #define RX_PIN 21
 #define TX_PIN 20
@@ -152,33 +180,32 @@ static const uart_hardware_t uart_hardware =
     }
 };
 
-
 #else
 #error "UART port not available!"
 #endif
 
-#ifdef UART1_PORT
+#ifdef SERIAL1_PORT
 
-#if UART1_PORT == UART_PORT
+#if SERIAL1_PORT == SERIAL_PORT
 #error Conflicting use of UART peripherals!
 #endif
 
 static uint16_t tx1_fifo_size;
 DMAMEM static stream_tx_buffer_t tx1buffer;
 DMAMEM static stream_rx_buffer_t rx1buffer;
-static enqueue_realtime_command_ptr enqueue_realtime_command1 = protocol_enqueue_realtime_command;
+static enqueue_realtime_command_ptr enqueue_realtime_command1;
 
 static const io_stream_t *serial1Init (uint32_t baud_rate);
 static void uart1_interrupt_handler (void);
 
 #define UART1 uart1_hardware
 
-#if UART1_PORT == 1
+#if SERIAL1_PORT == 1
 
 #define RX1_PIN 25
 #define TX1_PIN 24
 
-static const uart_hardware_t uart1_hardware =
+PROGMEM static const uart_hardware_t uart1_hardware =
 {
     .port = &IMXRT_LPUART1,
     .ccm_register = &CCM_CCGR5,
@@ -199,7 +226,7 @@ static const uart_hardware_t uart1_hardware =
     }
 };
 
-#elif UART1_PORT == 4
+#elif SERIAL1_PORT == 4
 
 #define RX1_PIN 7
 #define TX1_PIN 8
@@ -225,12 +252,12 @@ static const uart_hardware_t uart1_hardware =
     }
 };
 
-#elif UART1_PORT == 5
+#elif SERIAL1_PORT == 5
 
 #define RX1_PIN 34
 #define TX1_PIN 35
 
-static const uart_hardware_t uart1_hardware =
+PROGMEM static const uart_hardware_t uart1_hardware =
 {
     .port = &IMXRT_LPUART5,
     .ccm_register = &CCM_CCGR3,
@@ -251,12 +278,12 @@ static const uart_hardware_t uart1_hardware =
     }
 };
 
-#elif UART1_PORT == 6
+#elif SERIAL1_PORT == 6
 
 #define RX1_PIN 0
 #define TX1_PIN 1
 
-static const uart_hardware_t uart1_hardware =
+PROGMEM static const uart_hardware_t uart1_hardware =
 {
     .port = &IMXRT_LPUART6,
     .ccm_register = &CCM_CCGR3,
@@ -277,12 +304,38 @@ static const uart_hardware_t uart1_hardware =
     }
 };
 
-#elif UART1_PORT == 8
+#elif SERIAL1_PORT == 7
+
+#define RX1_PIN 28
+#define TX1_PIN 29
+
+PROGMEM static const uart_hardware_t uart1_hardware =
+{
+    .port = &IMXRT_LPUART7,
+    .ccm_register = &CCM_CCGR5,
+    .ccm_value = CCM_CCGR5_LPUART7(CCM_CCGR_ON),
+    .irq = IRQ_LPUART7,
+    .irq_handler = uart1_interrupt_handler,
+    .rx_pin = {
+        .pin = RX1_PIN,
+        .mux_val = 2,
+        .select_reg = &IOMUXC_LPUART7_RX_SELECT_INPUT,
+        .select_val = 1
+    },
+    .tx_pin = {
+        .pin = TX1_PIN,
+        .mux_val = 2,
+        .select_reg = NULL,
+        .select_val = 0
+    }
+};
+
+#elif SERIAL1_PORT == 8
 
 #define RX1_PIN 21
 #define TX1_PIN 20
 
-static const uart_hardware_t uart1_hardware =
+PROGMEM static const uart_hardware_t uart1_hardware =
 {
     .port = &IMXRT_LPUART8,
     .ccm_register = &CCM_CCGR6,
@@ -305,7 +358,31 @@ static const uart_hardware_t uart1_hardware =
 
 #endif
 
-#endif // UART1_PORT
+#endif // SERIAL1_PORT
+
+static bool uart_release (uint8_t instance);
+static const io_stream_status_t *get_uart_status (uint8_t instance);
+
+static io_stream_status_t stream_status[] = {
+    {
+        .baud_rate = 115200,
+        .format = {
+            .width = Serial_8bit,
+            .stopbits = Serial_StopBits1,
+            .parity = Serial_ParityNone,
+        }
+    },
+#ifdef SERIAL1_PORT
+    {
+        .baud_rate = 115200,
+        .format = {
+            .width = Serial_8bit,
+            .stopbits = Serial_StopBits1,
+            .parity = Serial_ParityNone,
+        }
+    }
+#endif
+};
 
 static io_stream_properties_t serial[] = {
     {
@@ -315,9 +392,11 @@ static io_stream_properties_t serial[] = {
       .flags.claimed = Off,
       .flags.can_set_baud = On,
       .flags.modbus_ready = On,
-      .claim = serialInit
+      .claim = serialInit,
+      .release = uart_release,
+      .get_status = get_uart_status
     }
-#ifdef UART1_PORT
+#ifdef SERIAL1_PORT
   , {
       .type = StreamType_Serial,
       .instance = 1,
@@ -325,53 +404,51 @@ static io_stream_properties_t serial[] = {
       .flags.claimed = Off,
       .flags.can_set_baud = On,
       .flags.modbus_ready = On,
-      .claim = serial1Init
+      .claim = serial1Init,
+      .release = uart_release,
+      .get_status = get_uart_status
     }
 #endif
 };
 
-void serialRegisterStreams (void)
+FLASHMEM void serialRegisterStreams (void)
 {
     static io_stream_details_t streams = {
         .n_streams = sizeof(serial) / sizeof(io_stream_properties_t),
         .streams = serial,
     };
 
-    static const periph_pin_t tx = {
+    PROGMEM static const periph_pin_t tx = {
         .function = Output_TX,
         .group = PinGroup_UART,
         .pin = TX_PIN,
-        .mode = { .mask = PINMODE_OUTPUT },
-        .description = "UART1"
+        .mode = { .mask = PINMODE_OUTPUT }
     };
 
-    static const periph_pin_t rx = {
+    PROGMEM static const periph_pin_t rx = {
         .function = Input_RX,
         .group = PinGroup_UART,
         .pin = RX_PIN,
-        .mode = { .mask = PINMODE_NONE },
-        .description = "UART1"
+        .mode = { .mask = PINMODE_NONE }
     };
 
     hal.periph_port.register_pin(&rx);
     hal.periph_port.register_pin(&tx);
 
-#ifdef UART1_PORT
+#ifdef SERIAL1_PORT
 
-    static const periph_pin_t tx1 = {
+    PROGMEM static const periph_pin_t tx1 = {
         .function = Output_TX,
         .group = PinGroup_UART2,
         .pin = TX1_PIN,
-        .mode = { .mask = PINMODE_OUTPUT },
-        .description = "UART2"
+        .mode = { .mask = PINMODE_OUTPUT }
     };
 
-    static const periph_pin_t rx1 = {
+    PROGMEM static const periph_pin_t rx1 = {
         .function = Input_RX,
         .group = PinGroup_UART2,
         .pin = RX1_PIN,
-        .mode = { .mask = PINMODE_NONE },
-        .description = "UART2"
+        .mode = { .mask = PINMODE_NONE }
     };
 
     hal.periph_port.register_pin(&rx1);
@@ -382,7 +459,24 @@ void serialRegisterStreams (void)
     stream_register_streams(&streams);
 }
 
-static bool setBaudRate (const uart_hardware_t *uart, uint32_t baud_rate)
+static const io_stream_status_t *get_uart_status (uint8_t instance)
+{
+    stream_status[instance].flags = serial[instance].flags;
+
+    return &stream_status[instance];
+}
+
+static bool uart_release (uint8_t instance)
+{
+    bool ok;
+
+    if((ok = serial[instance].flags.claimed))
+        serial[instance].flags.claimed = Off;
+
+    return ok;
+}
+
+FLASHMEM static bool setBaudRate (const uart_hardware_t *uart, uint32_t baud_rate)
 {
     float base = (float)UART_CLOCK / (float)baud_rate;
     float besterr = 1e20;
@@ -410,7 +504,15 @@ static bool setBaudRate (const uart_hardware_t *uart, uint32_t baud_rate)
     return true;
 }
 
-static uint32_t uartConfig (const uart_hardware_t *uart, uint32_t baud_rate)
+FLASHMEM static void setFormat (const uart_hardware_t *uart, serial_format_t format)
+{
+    uart->port->CTRL &= ~(LPUART_CTRL_M|LPUART_CTRL_PT|LPUART_CTRL_PE);
+
+    if(format.parity != Serial_ParityNone)
+        uart->port->CTRL |= (format.parity == Serial_ParityEven ? (LPUART_CTRL_M|LPUART_CTRL_PE) : (LPUART_CTRL_M|LPUART_CTRL_PT|LPUART_CTRL_PE));
+}
+
+FLASHMEM static uint32_t uartConfig (const uart_hardware_t *uart, uint32_t baud_rate)
 {
     uint32_t tx_fifo_size;
 
@@ -488,15 +590,15 @@ static uint32_t uartConfig (const uart_hardware_t *uart, uint32_t baud_rate)
 //
 // serialGetC - returns -1 if no data available
 //
-static int16_t serialGetC (void)
+static int32_t serialGetC (void)
 {
-    uint_fast16_t tail = rxbuffer.tail;         // Get buffer pointer
+    uint_fast16_t tail = rxbuffer.tail;             // Get buffer pointer
 
     if(tail == rxbuffer.head)
         return -1; // no data available
 
-    int16_t data = rxbuffer.data[tail];         // Get next character, increment tmp pointer
-    rxbuffer.tail = BUFNEXT(tail, rxbuffer);    // and update pointer
+    int32_t data = (int32_t)rxbuffer.data[tail];    // Get next character, increment tmp pointer
+    rxbuffer.tail = BUFNEXT(tail, rxbuffer);        // and update pointer
 
     return data;
 }
@@ -531,7 +633,7 @@ static void serialRxCancel (void)
     rxbuffer.head = BUFNEXT(rxbuffer.head, rxbuffer);
 }
 
-static bool serialPutC (const char c)
+static bool serialPutC (const uint8_t c)
 {
     if(txbuffer.head == txbuffer.tail && ((UART.port->WATER >> 8) & 0x7) < tx_fifo_size) {
         UART.port->DATA  = c;
@@ -548,24 +650,37 @@ static bool serialPutC (const char c)
     txbuffer.data[txbuffer.head] = c;               // Add data to buffer
     txbuffer.head = next_head;                      // and update head pointer
 
+#ifdef WEB_BUILD
+
     __disable_irq();
     UART.port->CTRL |= LPUART_CTRL_TIE; // (may need to handle this issue)BITBAND_SET_BIT(LPUART0_CTRL, TIE_BIT); // Enable TX interrupts
     __enable_irq();
+
+#else
+
+    uint32_t irq = __get_PRIMASK();
+    __set_PRIMASK(1);
+
+    UART.port->CTRL |= LPUART_CTRL_TIE; // (may need to handle this issue)BITBAND_SET_BIT(LPUART0_CTRL, TIE_BIT); // Enable TX interrupts
+
+    __set_PRIMASK(irq);
+
+#endif
 
     return true;
 }
 
 static void serialWriteS (const char *data)
 {
-    char c, *ptr = (char *)data;
+    uint8_t c, *ptr = (uint8_t *)data;
 
     while((c = *ptr++) != '\0')
         serialPutC(c);
 }
 
-static void serialWrite(const char *s, uint16_t length)
+static void serialWrite(const uint8_t *s, uint16_t length)
 {
-    char *ptr = (char *)s;
+    uint8_t *ptr = (uint8_t *)s;
 
     while(length--)
         serialPutC(*ptr++);
@@ -585,7 +700,18 @@ static uint16_t serialTxCount(void) {
 
 static bool serialSetBaudRate (uint32_t baud_rate)
 {
+    stream_status[0].baud_rate = baud_rate;
+
     return setBaudRate(&UART, baud_rate);
+}
+
+static bool serialSetFormat (serial_format_t format)
+{
+    stream_status[0].format = format;
+
+    setFormat(&UART, format);
+
+    return true;
 }
 
 static bool serialDisable (bool disable)
@@ -598,7 +724,7 @@ static bool serialDisable (bool disable)
     return true;
 }
 
-static bool serialEnqueueRtCommand (char c)
+static bool serialEnqueueRtCommand (uint8_t c)
 {
     return enqueue_realtime_command(c);
 }
@@ -613,7 +739,7 @@ static enqueue_realtime_command_ptr serialSetRtHandler (enqueue_realtime_command
     return prev;
 }
 
-static const io_stream_t *serialInit (uint32_t baud_rate)
+FLASHMEM static const io_stream_t *serialInit (uint32_t baud_rate)
 {
     PROGMEM static const io_stream_t stream = {
         .type = StreamType_Serial,
@@ -632,6 +758,7 @@ static const io_stream_t *serialInit (uint32_t baud_rate)
         .suspend_read = serialSuspendInput,
         .disable_rx = serialDisable,
         .set_baud_rate = serialSetBaudRate,
+        .set_format = serialSetFormat,
         .set_enqueue_rt_handler = serialSetRtHandler
     };
 
@@ -640,10 +767,17 @@ static const io_stream_t *serialInit (uint32_t baud_rate)
 
     serial[0].flags.claimed = On;
 
-    memset(&rxbuffer, 0, sizeof(stream_rx_buffer_t));
-    memset(&txbuffer, 0, sizeof(stream_tx_buffer_t));
+    if(!serial[0].flags.init_ok) {
 
-    tx_fifo_size = uartConfig(&UART, baud_rate);
+        memset(&rxbuffer, 0, sizeof(stream_rx_buffer_t));
+        memset(&txbuffer, 0, sizeof(stream_tx_buffer_t));
+
+        tx_fifo_size = uartConfig(&UART, baud_rate);
+
+        serial[0].flags.init_ok = On;
+    }
+
+    stream_set_defaults(&stream, baud_rate);
 
     return &stream;
 }
@@ -675,12 +809,12 @@ static void uart_interrupt_handler (void)
 
         while((UART.port->WATER >> 24) & 0x7) {
             uint32_t data = UART.port->DATA & 0xFF;                         // Read input (use only 8 bits of data)
-            if(!enqueue_realtime_command((char)data)) {
+            if(!enqueue_realtime_command((uint8_t)data)) {
                 uint_fast16_t next_head = BUFNEXT(rxbuffer.head, rxbuffer); // Get next head pointer
                 if(next_head == rxbuffer.tail)                              // If buffer full
                     rxbuffer.overflow = true;                               // flag overflow
                 else {
-                    rxbuffer.data[rxbuffer.head] = (char)data;              // Add data to buffer
+                    rxbuffer.data[rxbuffer.head] = (uint8_t)data;           // Add data to buffer
                     rxbuffer.head = next_head;                              // and update pointer
                 }
             }
@@ -691,20 +825,20 @@ static void uart_interrupt_handler (void)
     }
 }
 
-#ifdef UART1_PORT
+#ifdef SERIAL1_PORT
 
 //
 // serial1GetC - returns -1 if no data available
 //
-static int16_t serial1GetC (void)
+static int32_t serial1GetC (void)
 {
-    uint_fast16_t tail = rx1buffer.tail;         // Get buffer pointer
+    uint_fast16_t tail = rx1buffer.tail;            // Get buffer pointer
 
     if(tail == rx1buffer.head)
         return -1; // no data available
 
-    int16_t data = rx1buffer.data[tail];         // Get next character, increment tmp pointer
-    rx1buffer.tail = BUFNEXT(tail, rx1buffer);    // and update pointer
+    int32_t data = (int32_t)rx1buffer.data[tail];   // Get next character, increment tmp pointer
+    rx1buffer.tail = BUFNEXT(tail, rx1buffer);      // and update pointer
 
     return data;
 }
@@ -739,7 +873,7 @@ static void serial1RxCancel (void)
     rx1buffer.head = BUFNEXT(rx1buffer.head, rx1buffer);
 }
 
-static bool serial1PutC (const char c)
+static bool serial1PutC (const uint8_t c)
 {
     if(tx1buffer.head == tx1buffer.tail && ((UART1.port->WATER >> 8) & 0x7) < tx1_fifo_size) {
         UART1.port->DATA  = c;
@@ -748,32 +882,46 @@ static bool serial1PutC (const char c)
 
     uint_fast16_t next_head = BUFNEXT(tx1buffer.head, tx1buffer);   // Get next head pointer
 
-    while(tx1buffer.tail == next_head) {             // Buffer full, block until space is available...
+    while(tx1buffer.tail == next_head) {                            // Buffer full, block until space is available...
         if(!hal.stream_blocking_callback())
             return false;
     }
 
-    tx1buffer.data[tx1buffer.head] = c;               // Add data to buffer
-    tx1buffer.head = next_head;                      // and update head pointer
+    tx1buffer.data[tx1buffer.head] = c;                             // Add data to buffer
+    tx1buffer.head = next_head;                                     // and update head pointer
+
+#if WEB_BUILD
 
     __disable_irq();
     UART1.port->CTRL |= LPUART_CTRL_TIE; // (may need to handle this issue)BITBAND_SET_BIT(LPUART0_CTRL, TIE_BIT); // Enable TX interrupts
     __enable_irq();
+
+#else
+
+    uint32_t irq = __get_PRIMASK();
+
+    __set_PRIMASK(1);
+
+    UART1.port->CTRL |= LPUART_CTRL_TIE; // (may need to handle this issue)BITBAND_SET_BIT(LPUART0_CTRL, TIE_BIT); // Enable TX interrupts
+
+    __set_PRIMASK(irq);
+
+#endif
 
     return true;
 }
 
 static void serial1WriteS (const char *data)
 {
-    char c, *ptr = (char *)data;
+    uint8_t c, *ptr = (uint8_t *)data;
 
     while((c = *ptr++) != '\0')
         serial1PutC(c);
 }
 
-static void serial1Write(const char *s, uint16_t length)
+static void serial1Write(const uint8_t *s, uint16_t length)
 {
-    char *ptr = (char *)s;
+    uint8_t *ptr = (uint8_t *)s;
 
     while(length--)
         serial1PutC(*ptr++);
@@ -793,7 +941,18 @@ static uint16_t serial1TxCount(void)
 
 static bool serial1SetBaudRate (uint32_t baud_rate)
 {
+    stream_status[1].baud_rate = baud_rate;
+
     return setBaudRate(&UART1, baud_rate);
+}
+
+static bool serial1SetFormat (serial_format_t format)
+{
+    stream_status[1].format = format;
+
+    setFormat(&UART1, format);
+
+    return true;
 }
 
 static bool serial1Disable (bool disable)
@@ -806,7 +965,7 @@ static bool serial1Disable (bool disable)
     return true;
 }
 
-static bool serial1EnqueueRtCommand (char c)
+static bool serial1EnqueueRtCommand (uint8_t c)
 {
     return enqueue_realtime_command1(c);
 }
@@ -821,7 +980,7 @@ static enqueue_realtime_command_ptr serial1SetRtHandler (enqueue_realtime_comman
     return prev;
 }
 
-static const io_stream_t *serial1Init (uint32_t baud_rate)
+FLASHMEM static const io_stream_t *serial1Init (uint32_t baud_rate)
 {
     PROGMEM static const io_stream_t stream = {
         .type = StreamType_Serial,
@@ -841,6 +1000,7 @@ static const io_stream_t *serial1Init (uint32_t baud_rate)
         .suspend_read = serial1SuspendInput,
         .disable_rx = serial1Disable,
         .set_baud_rate = serial1SetBaudRate,
+        .set_format = serial1SetFormat,
         .set_enqueue_rt_handler = serial1SetRtHandler
     };
 
@@ -849,10 +1009,17 @@ static const io_stream_t *serial1Init (uint32_t baud_rate)
 
     serial[1].flags.claimed = On;
 
-    memset(&rx1buffer, 0, sizeof(stream_rx_buffer_t));
-    memset(&tx1buffer, 0, sizeof(stream_tx_buffer_t));
+    if(!serial[1].flags.init_ok) {
 
-    tx1_fifo_size = uartConfig(&UART1, baud_rate);
+        memset(&rx1buffer, 0, sizeof(stream_rx_buffer_t));
+        memset(&tx1buffer, 0, sizeof(stream_tx_buffer_t));
+
+        tx1_fifo_size = uartConfig(&UART1, baud_rate);
+
+        serial[1].flags.init_ok = On;
+    }
+
+    stream_set_defaults(&stream, baud_rate);
 
     return &stream;
 }
@@ -884,12 +1051,12 @@ static void uart1_interrupt_handler (void)
 
         while((UART1.port->WATER >> 24) & 0x7) {
             uint32_t data = UART1.port->DATA & 0xFF;                            // Read input (use only 8 bits of data)
-            if(!enqueue_realtime_command1((char)data)) {
+            if(!enqueue_realtime_command1((uint8_t)data)) {
                 uint_fast16_t next_head = BUFNEXT(rx1buffer.head, rx1buffer);   // Get next head pointer
                 if(next_head == rx1buffer.tail)                                 // If buffer full
                     rx1buffer.overflow = true;                                  // flag overflow
                 else {
-                    rx1buffer.data[rx1buffer.head] = (char)data;                // Add data to buffer
+                    rx1buffer.data[rx1buffer.head] = (uint8_t)data;             // Add data to buffer
                     rx1buffer.head = next_head;                                 // and update pointer
                 }
             }
@@ -900,4 +1067,4 @@ static void uart1_interrupt_handler (void)
     }
 }
 
-#endif // UART1_PORT
+#endif // SERIAL1_PORT

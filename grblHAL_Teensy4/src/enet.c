@@ -3,7 +3,7 @@
 
   Part of grblHAL
 
-  Copyright (c) 2020-2025 Terje Io
+  Copyright (c) 2020-2026 Terje Io
 
   grblHAL is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -31,7 +31,8 @@
 #include <lwip_k6x.h>
 #include <lwip_t41.h>
 #include <lwip/netif.h>
-#include "lwip/dhcp.h"
+#include <lwip/dhcp.h>
+#include <lwip/timeouts.h>
 
 #include "grbl/report.h"
 #include "grbl/task.h"
@@ -41,25 +42,25 @@
 
 #define MDNS_TTL 32
 
+static bool dhcp = false;
 static char IPAddress[IP4ADDR_STRLEN_MAX], if_name[NETIF_NAMESIZE] = "";
-static stream_type_t active_stream = StreamType_Null;
 static network_services_t services = {0}, allowed_services;
 static nvs_address_t nvs_address;
 static network_settings_t ethernet, network;
-static on_report_options_ptr on_report_options;
-static on_execute_realtime_ptr on_execute_realtime;
-static on_stream_changed_ptr on_stream_changed;
 static char netservices[NETWORK_SERVICES_LEN] = "";
 static network_flags_t network_status = {};
 
 #if MQTT_ENABLE
 
-static bool mqtt_connected = false;
+static void status_event_publish (network_flags_t changed);
+
 static on_mqtt_client_connected_ptr on_client_connected;
 
-static void mqtt_connection_changed (bool connected)
+FLASHMEM static void mqtt_connection_changed (bool connected)
 {
-    mqtt_connected = connected;
+    network_status.mqtt_connected = connected;
+
+    status_event_publish((network_flags_t){ .mqtt_connected = On });
 
     if(on_client_connected)
          on_client_connected(connected);
@@ -67,7 +68,7 @@ static void mqtt_connection_changed (bool connected)
 
 #endif
 
-static network_info_t *get_info (const char *interface)
+FLASHMEM static network_info_t *get_info (const char *interface)
 {
     static network_info_t info = {};
 
@@ -85,6 +86,7 @@ static network_info_t *get_info (const char *interface)
         info.interface = (const char *)if_name;
         info.is_ethernet = true;
         info.link_up = network_status.link_up;
+        info.dhcp = dhcp;
         info.mbps = 100;
         info.status.services = services;
 
@@ -109,58 +111,9 @@ static network_info_t *get_info (const char *interface)
     return NULL;
 }
 
-static void report_options (bool newopt)
-{
-    on_report_options(newopt);
-
-    if(newopt) {
-        hal.stream.write(",ETH");
-#if FTP_ENABLE
-        if(services.ftp)
-            hal.stream.write(",FTP");
-#endif
-#if WEBDAV_ENABLE
-        if(services.webdav)
-            hal.stream.write(",WebDAV");
-#endif
-#if MDNS_ENABLE
-        if(services.mdns)
-            hal.stream.write(",mDNS");
-#endif
-#if SSDP_ENABLE
-        if(services.ssdp)
-            hal.stream.write(",SSDP");
-#endif
-    } else {
-
-        network_info_t *info;
-
-        if((info = get_info(if_name))) {
-
-            hal.stream.write("[IP:");
-            hal.stream.write(info->status.ip);
-            hal.stream.write("]" ASCII_EOL);
-
-            if(active_stream == StreamType_Telnet || active_stream == StreamType_WebSocket) {
-                hal.stream.write("[NETCON:");
-                hal.stream.write(active_stream == StreamType_Telnet ? "Telnet" : "Websocket");
-                hal.stream.write("]" ASCII_EOL);
-            }
-#if MQTT_ENABLE
-            char *client_id;
-            if(*(client_id = info->mqtt_client_id)) {
-                hal.stream.write("[MQTT CLIENTID:");
-                hal.stream.write(client_id);
-                hal.stream.write(mqtt_connected ? "]" ASCII_EOL : " (offline)]" ASCII_EOL);
-            }
-#endif
-        }
-    }
-}
-
 #if MDNS_ENABLE
 
-static void mdns_device_info (struct mdns_service *service, void *txt_userdata)
+FLASHMEM static void mdns_device_info (struct mdns_service *service, void *txt_userdata)
 {
     char build[20] = "build=";
 
@@ -195,7 +148,14 @@ static void netif_status_callback (struct netif *netif)
 
     ip4addr_ntoa_r(netif_ip_addr4(netif), IPAddress, IP4ADDR_STRLEN_MAX);
 
-#if TELNET_ENABLE
+    if(network.ip_mode == IpMode_Static && !dhcp) {
+
+        static dhcp_server_t dhcp_data;
+
+        dhcp = dhcp_server_init(&dhcp_data, (ip_addr_t *)&network.ip, (ip_addr_t *)&network.mask);
+    }
+
+    #if TELNET_ENABLE
     if(network.services.telnet && !services.telnet)
         services.telnet =  telnetd_init(network.telnet_port);
 #endif
@@ -224,6 +184,12 @@ static void netif_status_callback (struct netif *netif)
         services.websocket = websocketd_init(network.websocket_port);
 #endif
 
+    if(services.websocket)
+        report_message(uitoa(network.websocket_port), 0);
+
+    if(services.telnet)
+        report_message(uitoa(network.telnet_port), 0);
+
 #if MDNS_ENABLE
     if(*network.hostname && network.services.mdns && !services.mdns) {
 
@@ -250,7 +216,7 @@ static void netif_status_callback (struct netif *netif)
 #endif
 
 #if MQTT_ENABLE
-    if(!mqtt_connected)
+    if(!network_status.mqtt_connected)
         mqtt_connect(get_info(if_name), &network.mqtt);
 #endif
 
@@ -266,62 +232,66 @@ static void netif_status_callback (struct netif *netif)
 
 static void link_status_callback (struct netif *netif)
 {
+    static bool dhcp_running = false;
+
     bool isLinkUp = netif_is_link_up(netif);
 
     if(isLinkUp != network_status.link_up) {
 
-        if(!(network_status.link_up = isLinkUp))
-            network_status.ip_aquired = Off;
+        network_flags_t changed = { .link_up = On };
 
-        status_event_publish((network_flags_t){ .link_up = On, .ip_aquired = !isLinkUp });
+        if((network_status.link_up = isLinkUp)) {
+            if(network.ip_mode == IpMode_DHCP && !dhcp_running)
+                dhcp_running = dhcp_start(netif_default) == ERR_OK;
+        } else if(network.ip_mode == IpMode_DHCP && network_status.ip_aquired) {
+            changed.ip_aquired = On;
+            network_status.ip_aquired = Off;
+        }
+
+        status_event_publish(changed);
 
         if(network_status.link_up && network.ip_mode == IpMode_Static)
             netif_status_callback(netif);
+    }
+}
 
+static void grbl_enet_poll (void *data)
+{
+    static uint32_t ms = 0;
+
+    enet_proc_input();
+    sys_check_timeouts();
+
+    if(network_status.link_up) switch(++ms) {
 #if TELNET_ENABLE
-        telnetd_notify_link_status(network_status.link_up);
+        case 1:
+            if(services.telnet)
+                telnetd_poll();
+            break;
+#endif
+#if WEBSOCKET_ENABLE
+        case 2:
+            if(services.websocket)
+                websocketd_poll();
+            break;
+#endif
+        case 3:
+            ms = 0;
+#if FTP_ENABLE
+            if(services.ftp)
+                ftpd_poll();
+#endif
+#if MODBUS_ENABLE & MODBUS_TCP_ENABLED
+            modbus_tcp_client_poll();
 #endif
     }
 }
 
-static void grbl_enet_poll (sys_state_t state)
+static void link_check (void *data)
 {
-    static uint32_t last_ms0, last_ms1;
+    enet_poll();
 
-    uint32_t ms = millis();
-
-    enet_proc_input();
-
-    if(ms - last_ms0 > 3) {
-
-        last_ms0 = ms;
-#if TELNET_ENABLE
-        if(services.telnet)
-            telnetd_poll();
-#endif
-
-#if FTP_ENABLE
-        if(services.ftp)
-            ftpd_poll();
-#endif
-
-#if WEBSOCKET_ENABLE
-        if(services.websocket)
-            websocketd_poll();
-#endif
-
-#if MODBUS_ENABLE & MODBUS_TCP_ENABLED
-        modbus_tcp_client_poll();
-#endif
-    }
-
-    if (ms - last_ms1 > 25)
-    {
-        last_ms1 = ms;
-        enet_poll();
-    }
-
-    on_execute_realtime(state);
+    task_add_delayed(link_check, NULL, LINK_CHECK_INTERVAL);
 }
 
 FLASHMEM bool grbl_enet_start (void)
@@ -329,8 +299,6 @@ FLASHMEM bool grbl_enet_start (void)
     if(nvs_address != 0) {
 
         *IPAddress = '\0';
-        on_execute_realtime = grbl.on_execute_realtime;
-        grbl.on_execute_realtime = grbl_enet_poll;
 
         memcpy(&network, &ethernet, sizeof(network_settings_t));
 
@@ -364,9 +332,6 @@ FLASHMEM bool grbl_enet_start (void)
         network_status.interface_up = On;
         status_event_publish((network_flags_t){ .interface_up = On });
 
-        if(network.ip_mode == IpMode_DHCP)
-            dhcp_start(netif_default);
-
 #if MDNS_ENABLE || SSDP_ENABLE || LWIP_IGMP
 
         if(network.services.mdns || network.services.ssdp) {
@@ -375,6 +340,9 @@ FLASHMEM bool grbl_enet_start (void)
         }
 
 #endif
+
+        task_add_systick(grbl_enet_poll, NULL);
+        task_add_delayed(link_check, NULL, LINK_CHECK_INTERVAL);
     }
 
     return nvs_address != 0;
@@ -392,7 +360,7 @@ static char *ethernet_get_ip (setting_id_t setting);
 static status_code_t ethernet_set_services (setting_id_t setting, uint_fast16_t int_value);
 static uint32_t ethernet_get_services (setting_id_t id);
 
-static const setting_group_detail_t ethernet_groups [] = {
+PROGMEM static const setting_group_detail_t ethernet_groups [] = {
     { Group_Root, Group_Networking, "Networking" }
 };
 
@@ -419,8 +387,6 @@ PROGMEM static const setting_detail_t ethernet_settings[] = {
 #endif
 };
 
-#ifndef NO_SETTINGS_DESCRIPTIONS
-
 PROGMEM static const setting_descr_t ethernet_settings_descr[] = {
     { Setting_NetworkServices, "Network services to enable. Consult driver documentation for availability." },
     { Setting_Hostname, "Network hostname." },
@@ -446,26 +412,10 @@ PROGMEM static const setting_descr_t ethernet_settings_descr[] = {
 #endif
 };
 
-#endif
-
-static void ethernet_settings_save (void)
+FLASHMEM static void ethernet_settings_save (void)
 {
     hal.nvs.memcpy_to_nvs(nvs_address, (uint8_t *)&ethernet, sizeof(network_settings_t), true);
 }
-
-static setting_details_t setting_details = {
-    .groups = ethernet_groups,
-    .n_groups = sizeof(ethernet_groups) / sizeof(setting_group_detail_t),
-    .settings = ethernet_settings,
-    .n_settings = sizeof(ethernet_settings) / sizeof(setting_detail_t),
-#ifndef NO_SETTINGS_DESCRIPTIONS
-    .descriptions = ethernet_settings_descr,
-    .n_descriptions = sizeof(ethernet_settings_descr) / sizeof(setting_descr_t),
-#endif
-    .save = ethernet_settings_save,
-    .load = ethernet_settings_load,
-    .restore = ethernet_settings_restore
-};
 
 FLASHMEM static status_code_t ethernet_set_ip (setting_id_t setting, char *value)
 {
@@ -537,14 +487,14 @@ FLASHMEM static char *ethernet_get_ip (setting_id_t setting)
     return ip;
 }
 
-static status_code_t ethernet_set_services (setting_id_t setting, uint_fast16_t int_value)
+FLASHMEM static status_code_t ethernet_set_services (setting_id_t setting, uint_fast16_t int_value)
 {
     ethernet.services.mask = int_value & allowed_services.mask;
 
     return Status_OK;
 }
 
-static uint32_t ethernet_get_services (setting_id_t id)
+FLASHMEM static uint32_t ethernet_get_services (setting_id_t id)
 {
     return (uint32_t)ethernet.services.mask;
 }
@@ -600,7 +550,7 @@ FLASHMEM void ethernet_settings_restore (void)
     hal.nvs.memcpy_to_nvs(nvs_address, (uint8_t *)&ethernet, sizeof(network_settings_t), true);
 }
 
-static void ethernet_settings_load (void)
+FLASHMEM static void ethernet_settings_load (void)
 {
     if(hal.nvs.memcpy_from_nvs((uint8_t *)&ethernet, nvs_address, sizeof(network_settings_t), true) != NVS_TransferResult_OK)
         ethernet_settings_restore();
@@ -608,26 +558,23 @@ static void ethernet_settings_load (void)
     ethernet.services.mask &= allowed_services.mask;
 }
 
-static void stream_changed (stream_type_t type)
-{
-    if(type != StreamType_SDCard)
-        active_stream = type;
-
-    if(on_stream_changed)
-        on_stream_changed(type);
-}
-
 FLASHMEM bool grbl_enet_init (network_settings_t *settings)
 {
+    static setting_details_t setting_details = {
+        .groups = ethernet_groups,
+        .n_groups = sizeof(ethernet_groups) / sizeof(setting_group_detail_t),
+        .settings = ethernet_settings,
+        .n_settings = sizeof(ethernet_settings) / sizeof(setting_detail_t),
+        .descriptions = ethernet_settings_descr,
+        .n_descriptions = sizeof(ethernet_settings_descr) / sizeof(setting_descr_t),
+        .save = ethernet_settings_save,
+        .load = ethernet_settings_load,
+        .restore = ethernet_settings_restore
+    };
+
     if((nvs_address = nvs_alloc(sizeof(network_settings_t)))) {
 
         networking_init();
-
-        on_report_options = grbl.on_report_options;
-        grbl.on_report_options = report_options;
-
-        on_stream_changed = grbl.on_stream_changed;
-        grbl.on_stream_changed = stream_changed;
 
 #if MQTT_ENABLE
         on_client_connected = mqtt_events.on_client_connected;

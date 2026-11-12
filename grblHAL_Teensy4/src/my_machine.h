@@ -3,7 +3,7 @@
 
   Part of grblHAL
 
-  Copyright (c) 2020-2024 Terje Io
+  Copyright (c) 2020-2026 Terje Io
 
   grblHAL is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -23,6 +23,9 @@
 
 // NOTE: Only one board may be enabled!
 // If none is enabled pin mappings from generic_map.h will be used
+//#define BOARD_CNC_BOOSTERPACK
+//#define BOARD_E5XMCS_T41
+//#define BOARD_GRBLHAL2000
 //#define BOARD_T40X101
 //#define BOARD_T41U5XBB
 //#define BOARD_T41U5XBB_SS // For a modified T41U5XBB board, allows spindle sync to be enabled.
@@ -30,7 +33,6 @@
 //#define BOARD_CNC_BOOSTERPACK
 //#define BOARD_GRBLHAL2000
 #define BOARD_MY_MACHINE // Add my_machine_map.h before enabling this!
-#define BAUD_RATE 115200
 // Configuration
 // Uncomment to enable, for some a value > 1 may be assigned, if so the default value is shown.
 
@@ -50,10 +52,15 @@ BOARD_GRBLHAL2000     | yes       | yes     | yes    | yes    | max 5  |
 N_AXIS has a default value of 3, edit grbl\config.h to increase.
 
 */
+
+// Configuration
+// Uncomment to enable, for some a value > 1 may be assigned, if so the default value is shown.
+
 #ifndef USB_SERIAL_CDC
-#define USB_SERIAL_CDC         2 // 1 for Arduino class library and 2 for PJRC C library. Comment out or set to 0 to use UART communication.
+#define USB_SERIAL_CDC          2 // 1 for Arduino class library and 2 for PJRC C library. Comment out or set to 0 to use UART communication.
 #endif
 //#define USB_SERIAL_WAIT         1 // Wait for USB connection before starting grblHAL.
+#define BAUD_RATE 		 115200 // UART baud rate
 //#define BLUETOOTH_ENABLE        2 // Set to 2 for HC-05 module. Requires and claims one auxiliary input pin.
 // Spindle selection:
 // Up to four specific spindle drivers can be instantiated at a time
@@ -71,14 +78,14 @@ N_AXIS has a default value of 3, edit grbl\config.h to increase.
 
 #define MODBUS_ENABLE           1 // Set to 1 for auto direction, 2 for direction signal on auxiliary output pin.
 #define MODBUS_RTU_STREAM       1 // which stream instance to use. 0,1,2. Use UART1 instance (UART port number defined below)
-#define UART1_PORT              4 // Which IMXRT LPUART port to use LPUART4 == RX2/TX2 on the Teensy Pinout Doc
+#define SERIAL1_PORT            4 // Which IMXRT LPUART port to use LPUART4 == RX2/TX2 on the Teensy Pinout Doc
 
 
 #define WEBUI_ENABLE            3 // Enable ESP3D-WEBUI plugin along with networking and SD card plugins.
 #define ETHERNET_ENABLE         1 // Ethernet streaming. Enables networking plugin.
 #define SDCARD_ENABLE           1 // Run gcode programs from SD card. Set to 2 to enable YModem upload.
 //#define LITTLEFS_ENABLE         1 // Enable flash based storage, automatically enabled if WebUI is enabled. Set to 2 to mount as root.
-//#define QEI_ENABLE              1 // Enable quadrature encoder interfaces. Max value is 1. Requires encoder plugin.
+//#define ENCODER_ENABLE          1 // Enable encoder plugin and quadrature encoder interface. Set to to 2 if select input is not required or available.
 //#define MPG_ENABLE              1 // Enable MPG interface. Requires a serial stream and means to switch between normal and MPG mode.
                                     // 1: Mode switching is by handshake pin.
                                     // 2: Mode switching is by the CMD_MPG_MODE_TOGGLE (0x8B) command character.
@@ -95,8 +102,14 @@ N_AXIS has a default value of 3, edit grbl\config.h to increase.
 //#define LB_CLUSTERS_ENABLE      1 // LaserBurn cluster support.
 //#define ODOMETER_ENABLE         1 // Odometer plugin.
 //#define OPENPNP_ENABLE          1 // OpenPNP plugin. To be completed.
+//#define TRINAMIC_ENABLE      2130 // Trinamic TMC2130 stepper driver support.
+//#define TRINAMIC_ENABLE      5160 // Trinamic TMC5160 stepper driver support.
+//#define TRINAMIC_R_SENSE      110 // R sense resistance in milliohms, 2130 and 2209 default is 110, 5160 is 75.
+//#define TRINAMIC_ENABLE      2240 // Trinamic TMC2240 stepper driver support.
+//#define TRINAMIC_R_REF         12 // R ref resistance in kiloohms, used for 2240 - default value is 12.
+//#define TRINAMIC_I2C            1 // Trinamic I2C - SPI bridge interface.
 //#define FANS_ENABLE             1 // Enable fan control via M106/M107. Enables fans plugin.
-//#define EEPROM_ENABLE          16 // I2C EEPROM/FRAM support. Set to 16 for 2K, 32 for 4K, 64 for 8K, 128 for 16K and 256 for 16K capacity.
+#define EEPROM_ENABLE          256 // I2C EEPROM/FRAM support. Set to 16 for 2K, 32 for 4K, 64 for 8K, 128 for 16K and 256 for 32K capacity.
 //#define EEPROM_IS_FRAM          1 // Uncomment when EEPROM is enabled and chip is FRAM, this to remove write delay.
 //#define SPINDLE_SYNC_ENABLE     1 // Enable spindle sync support (G33, G76). !! NOTE: Alpha quality - enable only for test or verification.
                                     // Currently only available for BOARD_T41BB5X_PRO and BOARD_T41U5XBB_SS.
@@ -109,16 +122,25 @@ N_AXIS has a default value of 3, edit grbl\config.h to increase.
 //#define ESP_AT_ENABLE           1 // Enable support for Telnet communication via UART connected ESP32 running ESP-AT.
 //#define FEED_OVERRIDE_ENABLE    1 // Enable M200 feed override control.
 //#define HOMING_PULLOFF_ENABLE   1 // Enable per axis homing pulloff distance settings.
+//#define TOOLTABLE_ENABLE        1 // Enable file based tool table.
 
-// IO expanders:
-//
-//#define MCP3221_ENABLE          1 // MCP3221 I2C ADC input, default address is 0x9A (MCP3221_ADDRESS).
-//#define PCA9654E_ENABLE         1 // PCA9654E I2C digital I/O, default address is 0x40 (PCA9654E_ADDRESS).
+// --- IO expanders: ---
+//#define MCP3221_ENABLE          1 // MCP3221 I2C 12 bit ADC input, default address is 0x9A (MCP3221_ADDRESS).
+//#define MCP4725_ENABLE          1 // MCP4725 I2C 12 bit DAC output, default address is 0xC0 (MCP3221_ADDRESS).
+//#define MCP23017_ENABLE         1 // MCP23017 I2C 16 channel digital I/O, default address is 0x40 (MCP23017_ADDRESS).
+                                    // 1: Port A as outputs, port B as inputs.
+                                    // 2: Port A and B as outputs.
+                                    // 3: Port A and B as inputs.
+//#define PCA9654E_ENABLE         1 // PCA9654E I2C 8 channel digital out, default address is 0x40 (PCA9654E_ADDRESS).
+//#define FNC_EXPANDER_ENABLE     1 // FluidNC STM32F103 based I/O expander (Airedale)
+//#define THCAD2_ENABLE           1 // Mesa THCAD2 analog to frequency converter. Not yet completed!
 
 // Optional control signals:
 // These will be assigned to aux input pins. Use the $pins command to check which pins are assigned.
 // NOTE: If not enough pins are available assignment will silently fail.
-// #define PROBE_ENABLE            0 // Default enabled, remove comment to disable probe input.
+//#define PROBE_ENABLE            0 // Default enabled, remove comment to disable probe input.
+//#define PROBE2_ENABLE           1 // Enable second regular probe input, depending on the board the input assigned may be predefined.
+//#define TOOLSETTER_ENABLE       1 // Enable toolsetter input, depending on the board the input assigned may be predefined.
 #define SAFETY_DOOR_ENABLE      1
 //#define MOTOR_FAULT_ENABLE      1
 //#define MOTOR_WARNING_ENABLE    1

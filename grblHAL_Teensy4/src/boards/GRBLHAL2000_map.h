@@ -3,7 +3,7 @@
 
   Part of grblHAL
 
-  Copyright (c) 2021-2024 Terje Io
+  Copyright (c) 2021-2026 Terje Io
 
   grblHAL is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -23,8 +23,8 @@
 #define BOARD_URL "https://github.com/Expatria-Technologies/grblhal_2000_PrintNC"
 #define HAS_BOARD_INIT
 
-#if MODBUS_ENABLE < 1
-#define UART_PORT 5
+#if !(MODBUS_ENABLE & MODBUS_RTU_ENABLED)
+#define SERIAL_PORT 5
 #endif
 
 #ifdef NETWORK_HOSTNAME
@@ -104,22 +104,31 @@
 #endif
 
 // Define auxiliary input pins
-#if !QEI_ENABLE
 #define AUXINPUT0_PIN       (36u) // ST0
 #define AUXINPUT1_PIN       (30u) // ST1
-#endif
 #if !SPINDLE_SYNC_ENABLE
 #define AUXINPUT2_PIN       (31u) // ST2
+#if !THCAD2_ENABLE
 #define AUXINPUT3_PIN       (14u) // ST3
+#endif
 #endif
 #define AUXINPUT4_PIN       (29u) // Safety door
 #define AUXINPUT5_PIN       (41u) // I2C strobe
 #define AUXINPUT6_PIN       (15u) // Probe
+#define AUXINPUT7_PIN       (40u) // Reset/EStop
+#define AUXINPUT8_PIN       (16u) // Feed hold
+#define AUXINPUT9_PIN       (17u) // Cycle start
 
-// Define user-control CONTROLs (cycle start, reset, feed hold, door) input pins.
-#define RESET_PIN           (40u)  //this is halt?
-#define FEED_HOLD_PIN       (16u)
-#define CYCLE_START_PIN     (17u)
+// Define user-control controls (cycle start, reset, feed hold) input pins.
+#if CONTROL_ENABLE & CONTROL_HALT
+#define RESET_PIN           AUXINPUT7_PIN
+#endif
+#if CONTROL_ENABLE & CONTROL_FEED_HOLD
+#define FEED_HOLD_PIN       AUXINPUT8_PIN
+#endif
+#if CONTROL_ENABLE & CONTROL_CYCLE_START
+#define CYCLE_START_PIN     AUXINPUT9_PIN
+#endif
 
 #if PROBE_ENABLE
 #define PROBE_PIN           AUXINPUT6_PIN
@@ -135,10 +144,10 @@
 #define I2C_STROBE_PIN      AUXINPUT5_PIN
 #endif
 
-#if QEI_ENABLE
-#define QEI_A_PIN           (36u)
-#define QEI_B_PIN           (30u)
-#if defined(AUXINPUT2_PIN)
+#if ENCODER_ENABLE
+#define QEI_A_PIN           AUXINPUT0_PIN
+#define QEI_B_PIN           AUXINPUT1_PIN
+#if (ENCODER_ENABLE & 1) && defined(AUXINPUT2_PIN)
 #define QEI_SELECT_PIN      AUXINPUT2_PIN
 #endif
 #endif
@@ -146,6 +155,8 @@
 #if SPINDLE_SYNC_ENABLE
 #define SPINDLE_INDEX_PIN   (31u) // ST2
 #define SPINDLE_PULSE_PIN   (14u) // ST3
+#elif THCAD2_ENABLE
+#define THCAD2_PIN          (14u) // ST3
 #endif
 
 #if I2C_ENABLE

@@ -3,7 +3,7 @@
 
   Part of grblHAL
 
-  Copyright (c) 2020-2024 Terje Io
+  Copyright (c) 2020-2026 Terje Io
 
   grblHAL is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -87,19 +87,26 @@
 #define COOLANT_MIST_PIN        AUXOUTPUT4_PIN
 #endif
 
-// Define user-control CONTROLs (cycle start, reset, feed hold, door) input pins.
-#define RESET_PIN           (14u)
-#define FEED_HOLD_PIN       (16u)
-#define CYCLE_START_PIN     (17u)
-
 // Define auxiliary input pins
-#if !QEI_ENABLE
 #define AUXINPUT0_PIN       (0u)
 #define AUXINPUT1_PIN       (3u)
-#endif
 #define AUXINPUT2_PIN       (1u)
 #define AUXINPUT3_PIN       (29u) // Safety door
 #define AUXINPUT4_PIN       (15u) // Probe
+#define AUXINPUT5_PIN       (14u) // Reset/EStop
+#define AUXINPUT6_PIN       (16u) // Feed hold
+#define AUXINPUT7_PIN       (17u) // Cycle start
+
+// Define user-control controls (cycle start, reset, feed hold) input pins.
+#if CONTROL_ENABLE & CONTROL_HALT
+#define RESET_PIN           AUXINPUT5_PIN
+#endif
+#if CONTROL_ENABLE & CONTROL_FEED_HOLD
+#define FEED_HOLD_PIN       AUXINPUT6_PIN
+#endif
+#if CONTROL_ENABLE & CONTROL_CYCLE_START
+#define CYCLE_START_PIN     AUXINPUT7_PIN
+#endif
 
 #if PROBE_ENABLE
 #define PROBE_PIN           AUXINPUT4_PIN
@@ -119,8 +126,10 @@
 #define I2C_SDA4            (25u) // Not referenced, for info only
 #endif
 
-#if QEI_ENABLE
-#define QEI_A_PIN           (0)
-#define QEI_B_PIN           (3)
+#if ENCODER_ENABLE
+#define QEI_A_PIN           AUXINPUT0_PIN
+#define QEI_B_PIN           AUXINPUT1_PIN
+#if (ENCODER_ENABLE & 1) && defined(AUXINPUT2_PIN)
 #define QEI_SELECT_PIN      AUXINPUT2_PIN
+#endif
 #endif

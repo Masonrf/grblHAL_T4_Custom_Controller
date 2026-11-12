@@ -5,7 +5,7 @@
 
   Board by Phil Barrett: https://github.com/phil-barrett/grblHAL-teensy-4.x
 
-  Copyright (c) 2020-2024 Terje Io
+  Copyright (c) 2020-2026 Terje Io
 
   grblHAL is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -61,7 +61,9 @@
 #define M4_AVAILABLE
 #define M4_STEP_PIN         (26u)
 #define M4_DIRECTION_PIN    (27u)
+#ifdef M4_LIMIT_ENABLE
 #define M4_LIMIT_PIN        (28u)
+#endif
 #define M4_ENABLE_PIN       (37u)
 #endif
 
@@ -90,6 +92,16 @@
 #define SPINDLE_DIRECTION_PIN   AUXOUTPUT4_PIN
 #endif
 
+#if DRIVER_SPINDLE1_ENABLE & SPINDLE_ENA
+#define SPINDLE1_ENABLE_PIN      AUXOUTPUT1_PIN
+#endif
+#if DRIVER_SPINDLE1_ENABLE & SPINDLE_PWM
+#define SPINDLE1_PWM_PIN         AUXOUTPUT2_PIN
+#endif
+#if DRIVER_SPINDLE1_ENABLE & SPINDLE_DIR
+#define SPINDLE1_DIRECTION_PIN   AUXOUTPUT0_PIN
+#endif
+
 // Define flood and mist coolant enable output pins.
 #if COOLANT_ENABLE & COOLANT_FLOOD
 #define COOLANT_FLOOD_PIN       AUXOUTPUT6_PIN
@@ -98,17 +110,10 @@
 #define COOLANT_MIST_PIN        AUXOUTPUT7_PIN
 #endif
 
-// Define user-control CONTROLs (cycle start, reset, feed hold, door) input pins.
-#define RESET_PIN           (14u)
-#define FEED_HOLD_PIN       (16u)
-#define CYCLE_START_PIN     (17u)
-
 // Define auxiliary input pins
 #define AUXINPUT0_PIN       (36u) // ST0
-#if !QEI_ENABLE
 #define AUXINPUT1_PIN       (30u) // ST1
 #define AUXINPUT2_PIN       (34u) // ST2
-#endif
 #define AUXINPUT3_PIN       (35u) // ST3
 #define AUXINPUT4_PIN       (41u) // I2C strobe
 #if !defined(M4_LIMIT_PIN)
@@ -116,6 +121,20 @@
 #endif
 #define AUXINPUT6_PIN       (29u) // Safety door
 #define AUXINPUT7_PIN       (15u) // Probe
+#define AUXINPUT8_PIN       (14u) // Reset/EStop
+#define AUXINPUT9_PIN       (16u) // Feed hold
+#define AUXINPUT10_PIN      (17u) // Cycle start
+
+// Define user-control controls (cycle start, reset, feed hold) input pins.
+#if CONTROL_ENABLE & CONTROL_HALT
+#define RESET_PIN           AUXINPUT8_PIN
+#endif
+#if CONTROL_ENABLE & CONTROL_FEED_HOLD
+#define FEED_HOLD_PIN       AUXINPUT9_PIN
+#endif
+#if CONTROL_ENABLE & CONTROL_CYCLE_START
+#define CYCLE_START_PIN     AUXINPUT10_PIN
+#endif
 
 #if PROBE_ENABLE
 #define PROBE_PIN           AUXINPUT7_PIN
@@ -123,6 +142,8 @@
 
 #if SAFETY_DOOR_ENABLE
 #define SAFETY_DOOR_PIN     AUXINPUT6_PIN
+#elif TOOLSETTER_ENABLE
+#define TOOLSETTER_PIN      AUXINPUT6_PIN
 #endif
 
 #if MPG_ENABLE == 1 && defined(AUXINPUT5_PIN)
@@ -141,14 +162,22 @@
 #define MOTOR_WARNING_PIN   AUXINPUT1_PIN
 #endif
 
-#if QEI_ENABLE
-#define QEI_A_PIN           (30u) // ST1
-#define QEI_B_PIN           (34u) // ST2
-#define QEI_SELECT_PIN      AUXINPUT3_PIN // ST3
+#if ENCODER_ENABLE
+#define QEI_A_PIN           AUXINPUT1_PIN
+#define QEI_B_PIN           AUXINPUT2_PIN
+#if (ENCODER_ENABLE & 1)
+#define QEI_SELECT_PIN      AUXINPUT3_PIN
+#endif
 #endif
 
 #if I2C_ENABLE
 #define I2C_PORT            4
 #define I2C_SCL4            (24u) // Not referenced, for info only
 #define I2C_SDA4            (25u) // Not referenced, for info only
+#elif RGB_LED_ENABLE
+#define NEOPIXEL_UART_PIN	(24u)
+#else
+#define SERIAL1_PORT		1
+#define UART1_RX    		(25u) // Not used, for info only
+#define UART1_TX    		(24u) // Not used, for info only
 #endif
