@@ -109,7 +109,7 @@ N_AXIS has a default value of 3, edit grbl\config.h to increase.
 //#define TRINAMIC_R_REF         12 // R ref resistance in kiloohms, used for 2240 - default value is 12.
 //#define TRINAMIC_I2C            1 // Trinamic I2C - SPI bridge interface.
 //#define FANS_ENABLE             1 // Enable fan control via M106/M107. Enables fans plugin.
-//#define EEPROM_ENABLE          16 // I2C EEPROM/FRAM support. Set to 16 for 2K, 32 for 4K, 64 for 8K, 128 for 16K and 256 for 16K capacity.
+#define EEPROM_ENABLE          256 // I2C EEPROM/FRAM support. Set to 16 for 2K, 32 for 4K, 64 for 8K, 128 for 16K and 256 for 32K capacity.
 //#define EEPROM_IS_FRAM          1 // Uncomment when EEPROM is enabled and chip is FRAM, this to remove write delay.
 //#define SPINDLE_SYNC_ENABLE     1 // Enable spindle sync support (G33, G76). !! NOTE: Alpha quality - enable only for test or verification.
                                     // Currently only available for BOARD_T41BB5X_PRO and BOARD_T41U5XBB_SS.
@@ -141,7 +141,6 @@ N_AXIS has a default value of 3, edit grbl\config.h to increase.
 //#define PROBE_ENABLE            0 // Default enabled, remove comment to disable probe input.
 //#define PROBE2_ENABLE           1 // Enable second regular probe input, depending on the board the input assigned may be predefined.
 //#define TOOLSETTER_ENABLE       1 // Enable toolsetter input, depending on the board the input assigned may be predefined.
-// #define PROBE_ENABLE            0 // Default enabled, remove comment to disable probe input.
 #define SAFETY_DOOR_ENABLE      1
 //#define MOTOR_FAULT_ENABLE      1
 //#define MOTOR_WARNING_ENABLE    1

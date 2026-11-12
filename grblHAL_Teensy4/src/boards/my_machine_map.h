@@ -87,3 +87,7 @@
     #undef NETWORK_HOSTNAME
     #define NETWORK_HOSTNAME BOARD_NAME
 #endif
+
+#if I2C_ENABLE
+#define I2C_PORT            0   // SCL = 19, SDA = 18
+#endif
